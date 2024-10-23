@@ -1,34 +1,92 @@
 <script lang="ts">
 	let messages: { text: string; sender: string }[] = $state([]);
 	let userInput: string = $state('');
-	let showChat = $state(true);
+	let showChat = $state(false);
+	let currentThread = $state('');
 
 	// function to toggle chat interface
 	const toggleChat = () => {
 		showChat = !showChat;
+		getMessageThread();
 	};
 
-	// function to user input
-	const sendMessage = async () => {
-		if (userInput.trim() === '') return;
+	// lets create thread for conversation
+	const getMessageThread = () => {
+		if (currentThread.length > 0) return;
 
-		messages.push({ text: userInput, sender: 'user' });
+		createThread();
+	};
 
+	// create thread to start new session
+	const createThread = async () => {
 		try {
-			const response = await fetch('https://api.openai.com/v1/chat/completions', {
+			const response = await fetch('https://api.openai.com/v1/threads', {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'OpenAI-Beta': 'assistants=v2'
+				},
+				body: JSON.stringify({})
+			});
+
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+
+			const data = await response.json();
+			currentThread = data.id;
+		} catch (error) {
+			console.error('Error:', error);
+		}
+	};
+
+	// function to check run status
+	const checkRunStatus = async (runId: string) => {
+		try {
+			const response = await fetch(
+				`https://api.openai.com/v1/threads/${currentThread}/runs/${runId}`,
+				{
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+						'OpenAI-Beta': 'assistants=v2'
+					}
+				}
+			);
+
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+
+			const data = await response.json();
+			if (data.status != 'completed') {
+				checkRunStatus(runId);
+			} else {
+				getMessages();
+			}
+		} catch (error) {
+			console.error('Error:', error);
+			messages.push({
+				text: 'Error: Unable to fetch response, please retry!',
+				sender: 'assistant'
+			});
+		}
+	};
+
+	// add message to thread
+	const addMessageToThread = async () => {
+		try {
+			const response = await fetch(`https://api.openai.com/v1/threads/${currentThread}/messages`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+					'Content-Type': 'application/json',
+					'OpenAI-Beta': 'assistants=v2'
 				},
 				body: JSON.stringify({
-					model: 'gpt-4o',
-					messages: [
-						...messages.map((msg: { sender: string; text: string }) => ({
-							role: msg.sender === 'user' ? 'user' : 'assistant',
-							content: msg.text
-						}))
-					]
+					role: 'user',
+					content: userInput
 				})
 			});
 
@@ -37,12 +95,86 @@
 			}
 
 			const data = await response.json();
-			const botMessage = data.choices[0].message.content;
+		} catch (error) {
+			console.error('Error:', error);
+			messages.push({
+				text: 'Error: Unable to fetch response, please retry!',
+				sender: 'assistant'
+			});
+		}
+	};
+
+	// function to run the assistant
+	const runAssistant = async () => {
+		try {
+			const response = await fetch(`https://api.openai.com/v1/threads/${currentThread}/runs`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+					'Content-Type': 'application/json',
+					'OpenAI-Beta': 'assistants=v2'
+				},
+				body: JSON.stringify({
+					assistant_id: import.meta.env.VITE_OPENAI_ASSISTANT_ID
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+
+			const data = await response.json();
+			// check run status till its completed
+			checkRunStatus(data.id);
+		} catch (error) {
+			console.error('Error:', error);
+			messages.push({
+				text: 'Error: Unable to fetch response, please retry!',
+				sender: 'assistant'
+			});
+		}
+	};
+
+	// functioin to get messages
+	const getMessages = async () => {
+		try {
+			const response = await fetch(`https://api.openai.com/v1/threads/${currentThread}/messages`, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+					'Content-Type': 'application/json',
+					'OpenAI-Beta': 'assistants=v2'
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+
+			const data = await response.json();
+			const botMessage = data.data[0].content[0].text.value;
 			messages.push({ text: botMessage, sender: 'assistant' });
 		} catch (error) {
 			console.error('Error:', error);
-			messages.push({ text: 'Error: Unable to fetch response', sender: 'assistant' });
+			messages.push({
+				text: 'Error: Unable to fetch response, please retry!',
+				sender: 'assistant'
+			});
 		}
+	};
+
+	// function to user input
+	const sendMessage = async () => {
+		if (userInput.trim() === '') return;
+
+		messages.push({ text: userInput, sender: 'user' });
+
+		// make sure we have thread
+		getMessageThread();
+
+		addMessageToThread();
+
+		runAssistant();
 
 		userInput = '';
 	};
