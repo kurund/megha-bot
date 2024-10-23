@@ -6,7 +6,7 @@
 	let showChat = $state(false);
 	let currentThread = $state('');
 
-	let element = $state('messages-body');
+	let element: any = $state('');
 
 	const scrollToBottom = async (node: any) => {
 		node.scroll({ top: node.scrollHeight, behavior: 'smooth' });
@@ -15,18 +15,22 @@
 	// function to toggle chat interface
 	const toggleChat = () => {
 		showChat = !showChat;
-		getMessageThread();
-	};
-
-	// lets create thread for conversation
-	const getMessageThread = () => {
-		if (currentThread.length > 0) return;
-
 		createThread();
 	};
 
+	// reset chat
+	const resetChat = () => {
+		currentThread = '';
+		messages = [];
+		userInput = '';
+		createThread();
+	};
+
+	$inspect(currentThread);
+
 	// create thread to start new session
 	const createThread = async () => {
+		if (currentThread.length > 0) return;
 		try {
 			const response = await fetch('https://api.openai.com/v1/threads', {
 				method: 'POST',
@@ -182,8 +186,7 @@
 		await tick();
 		scrollToBottom(element);
 
-		// make sure we have thread
-		getMessageThread();
+		createThread();
 
 		addMessageToThread();
 
@@ -218,15 +221,16 @@
 				placeholder="Type a message..."
 				class="w-full rounded-md"
 			/>
-			<div class="flex flex-row my-2">
+			<div class="flex flex-row my-2 items-end">
 				<button
 					class="w-24 py-2 px-3 mr-2 bg-indigo-500 text-white text-sm font-semibold rounded-md shadow focus:outline-none"
 					onclick={sendMessage}>Send</button
 				>
 				<button
-					class="py-2 px-3 bg-gray-400 text-white text-sm font-semibold rounded-md shadow focus:outline-none"
+					class="py-2 px-3 mr-2 bg-gray-400 text-white text-sm font-semibold rounded-md shadow focus:outline-none"
 					onclick={toggleChat}>Close</button
 				>
+				<button class="text-xs underline" onclick={resetChat}>Reset chat</button>
 			</div>
 		</div>
 	</div>
