@@ -3,13 +3,31 @@
 
 	let messages: { text: string; sender: string }[] = $state([]);
 	let userInput: string = $state('');
-	let showChat = $state(false);
-	let currentThread = $state('');
-
+	let showChat: boolean = $state(false);
+	let currentThread: string = $state('');
 	let element: any = $state('');
+	let loadingText: string = $state('');
 
 	const scrollToBottom = async (node: any) => {
 		node.scroll({ top: node.scrollHeight, behavior: 'smooth' });
+	};
+
+	const getRandomLoadingMessage = () => {
+		const loadingMessages = [
+			'Fetching...',
+			'Processing...',
+			'Buffering...',
+			'Retrieving...',
+			'Updating...',
+			'Syncing...',
+			'Preparing...',
+			'Initializing...',
+			'Working...',
+			'Connecting...'
+		];
+
+		const randomIndex = Math.floor(Math.random() * loadingMessages.length);
+		return loadingMessages[randomIndex];
 	};
 
 	// function to toggle chat interface
@@ -55,6 +73,10 @@
 
 	// function to check run status
 	const checkRunStatus = async (runId: string) => {
+		if (!loadingText) {
+			loadingText = getRandomLoadingMessage();
+		}
+
 		try {
 			const response = await fetch(
 				`https://api.openai.com/v1/threads/${currentThread}/runs/${runId}`,
@@ -75,9 +97,11 @@
 			if (data.status != 'completed') {
 				checkRunStatus(runId);
 			} else {
+				loadingText = '';
 				getMessages();
 			}
 		} catch (error) {
+			loadingText = '';
 			console.error('Error:', error);
 			messages.push({
 				text: 'Error: Unable to fetch response, please retry!',
@@ -221,6 +245,9 @@
 				placeholder="Type a message..."
 				class="w-full rounded-md text-xs"
 			/>
+			{#if loadingText}
+				<div class="my-2 text-xs loading-text">{loadingText}</div>
+			{/if}
 			<div class="flex flex-row my-2 items-end">
 				<button
 					class="w-24 py-2 px-3 mr-2 bg-indigo-500 text-white text-sm font-semibold rounded-md shadow focus:outline-none"
@@ -240,3 +267,19 @@
 		onclick={toggleChat}>Chat</button
 	>
 {/if}
+
+<style>
+	.loading-text {
+		animation: fade 2s infinite ease-in-out;
+	}
+
+	@keyframes fade {
+		0%,
+		100% {
+			opacity: 0.5;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+</style>
