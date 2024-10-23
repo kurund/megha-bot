@@ -205,7 +205,7 @@
 				<div bind:this={element} class="overflow-auto max-h-64 my-2">
 					{#each messages as message}
 						<div
-							class="text-sm rounded-md p-2 m-2 flex w-fit {message.sender == 'user'
+							class="text-xs rounded-md p-2 m-2 flex w-fit {message.sender == 'user'
 								? 'border border-indigo-700 items-end rtl:items-start'
 								: 'border border-gray-700 items-start'}"
 						>
@@ -219,7 +219,7 @@
 				bind:value={userInput}
 				onkeydown={(e) => e.key === 'Enter' && sendMessage()}
 				placeholder="Type a message..."
-				class="w-full rounded-md"
+				class="w-full rounded-md text-xs"
 			/>
 			<div class="flex flex-row my-2 items-end">
 				<button
