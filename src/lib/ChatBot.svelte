@@ -3,10 +3,12 @@
 	let userInput: string = $state('');
 	let showChat = $state(true);
 
+	// function to toggle chat interface
 	const toggleChat = () => {
 		showChat = !showChat;
 	};
 
+	// function to user input
 	const sendMessage = async () => {
 		if (userInput.trim() === '') return;
 
@@ -20,7 +22,7 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					model: 'gpt-3.5-turbo',
+					model: 'gpt-4o',
 					messages: [
 						...messages.map((msg: { sender: string; text: string }) => ({
 							role: msg.sender === 'user' ? 'user' : 'assistant',
@@ -54,7 +56,11 @@
 			{:else}
 				<div class="overflow-auto max-h-64 my-2">
 					{#each messages as message}
-						<div class={message.sender}>
+						<div
+							class="text-sm rounded-md p-2 m-2 flex w-fit {message.sender == 'user'
+								? 'border border-indigo-700 items-end rtl:items-start'
+								: 'border border-gray-700 items-start'}"
+						>
 							{message.text}
 						</div>
 					{/each}
