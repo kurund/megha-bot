@@ -1,8 +1,16 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+
 	let messages: { text: string; sender: string }[] = $state([]);
 	let userInput: string = $state('');
 	let showChat = $state(false);
 	let currentThread = $state('');
+
+	let element = $state('messages-body');
+
+	const scrollToBottom = async (node: any) => {
+		node.scroll({ top: node.scrollHeight, behavior: 'smooth' });
+	};
 
 	// function to toggle chat interface
 	const toggleChat = () => {
@@ -154,6 +162,8 @@
 			const data = await response.json();
 			const botMessage = data.data[0].content[0].text.value;
 			messages.push({ text: botMessage, sender: 'assistant' });
+			await tick();
+			scrollToBottom(element);
 		} catch (error) {
 			console.error('Error:', error);
 			messages.push({
@@ -168,6 +178,9 @@
 		if (userInput.trim() === '') return;
 
 		messages.push({ text: userInput, sender: 'user' });
+
+		await tick();
+		scrollToBottom(element);
 
 		// make sure we have thread
 		getMessageThread();
@@ -186,7 +199,7 @@
 			{#if messages.length == 0}
 				<h1 class="my-2">Welcome to Megha Bot!</h1>
 			{:else}
-				<div class="overflow-auto max-h-64 my-2">
+				<div bind:this={element} class="overflow-auto max-h-64 my-2">
 					{#each messages as message}
 						<div
 							class="text-sm rounded-md p-2 m-2 flex w-fit {message.sender == 'user'
